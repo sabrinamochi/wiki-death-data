@@ -5,12 +5,14 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "download-year-pages": "node scripts/download-year-pages.js"
+    "download-year-pages": "node scripts/download-year-pages.js",
+    "parse-year-pages": "node scripts/parse-year-pages.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cheerio": "^1.0.0-rc.3",
     "wikijs": "^6.0.1"
   }
 }
