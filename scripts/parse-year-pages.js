@@ -1,10 +1,11 @@
 const fs = require('fs');
 const cheerio = require('cheerio');
+const d3 = require('d3');
 
 const inputPath = './output/year-pages';
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'Octorbor', 'November', 'December'];
 
-function parseLi(sel) {
+function parseLi({sel, year}) {
     const isPerson = !sel.find('ul').length;
     if (isPerson){
         const a = sel.find('a');
@@ -25,29 +26,46 @@ function parseLi(sel) {
         if (numATags === 3) {
             date_of_death = a.eq(0).attr('title');
         } else {
-            const parentLi = sel.parentsUntil('ul');
-            date_of_death = parentLi.find('a').eq(0).attr('title')
+            const parentLi = sel.parent().parent();
+            date_of_death = parentLi.find('a').first().attr('title');
         }
 
-        console.log({name, year_of_birth, date_of_death})
+        const year_of_death = year;
+
+        // description
+        const text = sel.text();
+        const sentence = numATags === 3 ? text.replace(`${date_of_death} – `, '') : text;
+        const withoutName = sentence.replace(`${name}, `, '');
+        const bIndex = withoutName.lastIndexOf('(b.');
+        const description = withoutName.substring(0, bIndex);
+
+        return ({name, year_of_birth, year_of_death, date_of_death, description})
 
     }
 
-        // return {
-        //     name:
-        //     link:
-        //     year_of_birth: 
-        //     description: 
-        // }
+    // else 
+    return null; 
+
     
 }
 
 function extractPeople(file){
     const html = fs.readFileSync(`${inputPath}/${file}`, 'utf-8');
     const $ = cheerio.load(html);
-    const parent = $(`#${months[0]}_2`).parent();
-    const ul = parent.nextAll('ul').eq(0);
-    const output = ul.find('li').map((i, el) => parseLi($(el)));
+    const peopleByMonth = months.map(month => {
+        const parent = $(`#${month}_2`).parent();
+        const year = file.replace('.html', '')
+        const ul = parent.nextAll('ul').eq(0);
+        const output = [];
+        ul.find('li')
+            .each((i, el) => {
+                const person = parseLi({sel: $(el), year});
+                if (person) output.push(person);
+            });
+        return output;
+    });
+    // Flatten the array
+    return [].concat(...peopleByMonth)
 }
 
 function init(){
@@ -55,7 +73,11 @@ function init(){
     const files = fs.readdirSync(inputPath)
         .filter(d => d.includes('.html'));
     
-    files.slice(0,1).map(extractPeople);
+    const peopleByYear = files.map(extractPeople);
+    const flatPeople = [].concat(...peopleByYear);
+    
+    const output = d3.csvFormat(flatPeople);
+    fs.writeFileSync('./output/all-deaths-2015-2018.csv', output)
 
 
 };
